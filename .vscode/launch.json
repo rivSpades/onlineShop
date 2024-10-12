@@ -1,0 +1,15 @@
+{
+   "version": "0.2.0",
+   "configurations": [
+       {
+           "name": "Django Debug with Conda",
+           "type": "python",
+           "request": "launch",
+           "program": "${workspaceFolder}/manage.py",
+           "args": ["runserver", "8001", "--noreload"],  // Changed port to 8001
+           "django": true,
+           "python": "/root/miniconda3/envs/onlineShopEnv/bin/python",
+           "console": "integratedTerminal"
+       }
+   ]
+}

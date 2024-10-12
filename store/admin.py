@@ -1,4 +1,4 @@
-from .models import Product
+from .models import Product,Variation
 from django.contrib import admin
 
 
@@ -9,4 +9,10 @@ class ProductAdmin(admin.ModelAdmin):
     prepopulated_fields={'slug':('name',)}
 
 
+class VariationAdmin(admin.ModelAdmin):
+    list_display=('name','product','value','is_active')
+    list_editable=('is_active',)
+    list_filter = ('name','product','value',)
+
 admin.site.register(Product,ProductAdmin)
+admin.site.register(Variation,VariationAdmin)
