@@ -21,10 +21,9 @@ class AddCartView(View):
             key=item
             value=request.POST[key]
             try:
-                print(item)
-                print(value)
+             
                 variation = Variation.objects.get( name__iexact=key ,value__iexact=value , product=product)
-                print(variation)
+             
             except:
                 continue                
             
