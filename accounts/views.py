@@ -111,3 +111,68 @@ class ActivateAccountView(View):
         else:
             messages.error(request, 'Invalid or expired Activation link')
             return redirect('accounts:login')
+        
+class DashboardView(View):
+    @method_decorator(login_required(login_url='accounts:login'))
+    def get(self,request):
+       
+       
+        return render(request,'accounts/dashboard.html')        
+    
+class ForgotPasswordView(View):
+    
+    def post(self,request):
+        email= request.POST['email']
+        
+        if Account.objects.filter(email=email).exists():
+            user=Account.objects.get(email__iexact=email)
+            current_site=get_current_site(request)
+            mail_subject = 'Reset your password'
+            message = render_to_string('accounts/reset_password_email.html',{
+                'user': user,
+                'domain': current_site,
+                'uid': urlsafe_base64_encode(force_bytes(user.pk)),
+                'token':default_token_generator.make_token(user),
+
+            })
+            to_email = email
+            send_email=EmailMessage(mail_subject,message,to=[to_email])
+            send_email.send()            
+            messages.success(request, 'Password reset email has been sent')
+            return redirect('accounts:login')
+        else:
+            messages.error(request, 'Account doesnt exists')    
+            return redirect('accounts:forgot_password')
+        
+class ResetPasswordView(View):
+    def get(request,uidb64,token):
+        try:
+            uid= urlsafe_base64_decode(uidb64).decode()
+            user = Account._default_manager.get(pk=uid)
+        except(TypeError,ValueError,OverflowError,Account.DoesNotExist):
+            user=None
+
+
+        if user and default_token_generator.check_token(user,token):
+            user.is_active=True
+            user.save()
+            messages.success(request, 'Your account is activated')
+            return redirect('accounts:login')
+        else:
+            messages.error(request, 'Invalid or expired Activation link')
+            return redirect('accounts:login')        
+        
+    def post(request):
+         password= request.POST['password']
+         confirm_password= request.POST['confirm_password']
+         
+         if password == confirm_password:
+             uid= request.session.get('uid')
+             user = Account.objects.get(pk=uid)
+             user.set_password(password)
+             user.save()
+             messages.success(request, 'Password was resetted')
+             return redirect('accounts:login')
+         else:
+            messages.error(request, 'Passwords dont match')    
+            return redirect('accounts:forgot_password')
