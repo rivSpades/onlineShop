@@ -3,8 +3,10 @@ from django.core.paginator import Paginator
 from django.views.generic import View
 from django.db.models import Q
 from .models import Product
-from category.models import Category
+from category.models import Category,MainCategory
 from cart.models import CartItem,Cart
+from .serializers import ProductSerializer
+from rest_framework.generics import ListAPIView, RetrieveAPIView
 # Create your views here.
 
 class StoreView(View):
@@ -56,3 +58,57 @@ class SearchView(View):
         }
         return render(request,'store/store.html',context)    
 
+
+
+
+
+class ProductsAPIView(ListAPIView):
+    serializer_class = ProductSerializer
+
+    def get_queryset(self):
+        # Base queryset to only include available products
+        queryset = Product.objects.filter(is_avaliable=True)
+
+        # Filter by category slug if provided
+        category_slug = self.request.query_params.get('category')
+        if category_slug:
+            category = get_object_or_404(Category, slug=category_slug)
+            queryset = queryset.filter(category=category)
+
+        # Filter by main category slug if provided
+        main_category_slug = self.request.query_params.get('main_category')
+        if main_category_slug:
+            main_category = get_object_or_404(MainCategory, slug=main_category_slug)
+            queryset = queryset.filter(category__main_category=main_category)
+
+        # Filter by keyword if provided
+        keyword = self.request.query_params.get('keyword')
+        if keyword:
+            queryset = queryset.filter(
+                Q(name__icontains=keyword) |
+                Q(description__icontains=keyword) |
+                Q(category__name__icontains=keyword)
+            )
+
+        return queryset
+
+    
+class ProductDetailAPIView(RetrieveAPIView):
+    queryset = Product.objects.filter(is_avaliable=True)
+    serializer_class = ProductSerializer
+    lookup_field = 'slug'
+    lookup_url_kwarg = 'product_slug'    
+
+class SearchAPIView(ListAPIView):
+    serializer_class = ProductSerializer
+
+    def get_queryset(self):
+
+        
+        # Search by keyword in name or description
+        keyword = self.request.query_params.get('keyword')
+        print(keyword)
+        if keyword:
+            queryset = Product.objects.filter(Q(name__icontains=keyword) | Q(description__icontains=keyword) | Q(category__name__icontains=keyword),is_avaliable=True)
+
+        return queryset    

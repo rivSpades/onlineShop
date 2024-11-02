@@ -12,7 +12,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 from django.contrib.messages import constants as messages
-
+from datetime import  timedelta
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -39,9 +39,14 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'corsheaders',
+    'rest_framework',
+    'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
     'category',
     'store',
     'cart',
+    'cms',
 
 ]
 
@@ -53,6 +58,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
 ]
 
 ROOT_URLCONF = 'onlineShop.urls'
@@ -74,6 +80,39 @@ TEMPLATES = [
         },
     },
 ]
+CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    # add any other domains you want to allow
+]
+
+# Cookie settings
+
+CSRF_COOKIE_SECURE = False      # Use False for local development
+CSRF_COOKIE_SAMESITE = 'Lax'   # Same as above
+
+SESSION_COOKIE_NAME = 'sessionid'  # Default session cookie name
+SESSION_COOKIE_HTTPONLY = False  # Prevent JavaScript access to the cookie
+SESSION_COOKIE_SECURE = False  # Set to True in production to ensure it's sent over HTTPS
+SESSION_COOKIE_SAMESITE = 'Lax'  # Adjust as necessary (Lax or None for cross-site)
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 10,  # Adjust this to the desired number of items per page
+}
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'BLACKLIST_AFTER_ROTATION': True,
+    'TOKEN_BLACKLIST': 'rest_framework_simplejwt.token_blacklist.models.BlacklistedToken',
+}
 
 WSGI_APPLICATION = 'onlineShop.wsgi.application'
 
