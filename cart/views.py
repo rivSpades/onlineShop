@@ -8,6 +8,8 @@ from .serializers import CartItemSerializer
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticatedOrReadOnly,AllowAny,IsAuthenticated  # Allows unauthenticated access for some parts
+from rest_framework.authentication import SessionAuthentication, BasicAuthentication
 
 class AddCartView(View):
          
@@ -93,6 +95,7 @@ class RemoveCartView(View):
         return redirect('cart:cart')       
 
 class CartView(View):
+    
     def get(self,request,total=0,quantity=0,cart_items=None):
         tax=0
         grand_total=0
@@ -120,11 +123,20 @@ class CartView(View):
 
 
 class ApiCartView(APIView):
+    authentication_classes = [SessionAuthentication]
+    permission_classes = [IsAuthenticatedOrReadOnly]
+  
     def get(self, request):
+        token = request.META.get('HTTP_AUTHORIZATION', " ").split(' ')[1]
+        print(token)
         try:
-            # Retrieve or create the cart using session ID
-            cart = Cart.objects.get(cart_session_id=Cart._get_cart_id(request))
-            cart_items = CartItem.objects.filter(cart=cart, is_active=True)
+            print(request.user)
+            if request.user.is_authenticated:
+                cart_items = CartItem.objects.filter(user=request.user, is_active=True)
+                
+            else:
+                cart = Cart.objects.get(cart_session_id=Cart._get_cart_id(request))            
+                cart_items = CartItem.objects.filter(cart=cart, is_active=True)
 
             # Calculate total, tax, and grand total
             total = sum(item.product.price * item.quantity for item in cart_items)
@@ -149,6 +161,8 @@ class ApiCartView(APIView):
         
 
 class ApiAddCartView(APIView):
+   
+    permission_classes = [AllowAny]
     def post(self, request, product_id):
         # Fetch the product by ID
         product = get_object_or_404(Product, id=product_id)
@@ -167,10 +181,17 @@ class ApiAddCartView(APIView):
                 continue
 
         # Get or create a cart for the current session
-        cart, created = Cart.objects.get_or_create(cart_session_id=Cart._get_cart_id(request))
+        print(request.user)
+        if request.user.is_authenticated:
+            cart_item_qs = CartItem.objects.filter(user=request.user, product=product)
+            
+
+
+        else:    
+            cart, created = Cart.objects.get_or_create(cart_session_id=Cart._get_cart_id(request))
 
         # Check if this product with these specific variations already exists in the cart
-        cart_item_qs = CartItem.objects.filter(product=product, cart=cart)
+            cart_item_qs = CartItem.objects.filter(product=product, cart=cart)
         variation_found = False
 
         if cart_item_qs.exists():
@@ -188,12 +209,21 @@ class ApiAddCartView(APIView):
 
         # If no cart item with the same variations exists, create a new cart item
         if not variation_found:
-            new_cart_item = CartItem.objects.create(
-                product=product,
-                cart=cart,
-                quantity=quantity,  # Set quantity based on request
-                is_active=True
-            )
+            if request.user.is_authenticated:
+                new_cart_item = CartItem.objects.create(
+                                product=product,
+                               
+                                quantity=quantity,  # Set quantity based on request
+                                is_active=True,
+                                user=request.user
+                            )       
+            else:                 
+                new_cart_item = CartItem.objects.create(
+                    product=product,
+                    cart=cart,
+                    quantity=quantity,  # Set quantity based on request
+                    is_active=True
+                )
             if product_variations:
                 new_cart_item.variation.set(product_variations)
             new_cart_item.save()
@@ -201,5 +231,28 @@ class ApiAddCartView(APIView):
         return Response({"message": "Product added to cart successfully"}, status=status.HTTP_201_CREATED)
 
 
-    
+class ApiRemoveCartView(APIView):
+    permission_classes = [AllowAny]
+    def delete(self, request, product_id, cart_item_id):
+        # Determine if the item should be removed completely or just decreased in quantity
+        remove_item = request.GET.get('remove_item', 'false') == 'true'
+        product = get_object_or_404(Product, id=product_id)
+        if request.user.is_authenticated:
+            cart_item = CartItem.objects.get(user=request.user, product=product,id=cart_item_id)     
+        else:       
+        # Retrieve the cart using the session ID
+            cart = Cart.objects.get(cart_session_id=Cart._get_cart_id(request))
+            
+            cart_item = get_object_or_404(CartItem, product=product, cart=cart, id=cart_item_id)
+
+        # Logic to remove the item from the cart
+        if cart_item.quantity > 1 and not remove_item:
+            cart_item.quantity -= 1
+            cart_item.save()
+            return Response({"message": "Item quantity decreased"}, status=status.HTTP_200_OK)
+        elif cart_item.quantity < 1 or remove_item:
+            cart_item.delete()
+            return Response({"message": "Item removed from cart"}, status=status.HTTP_200_OK)
+
+        return Response({"error": "Invalid operation"}, status=status.HTTP_400_BAD_REQUEST)
     

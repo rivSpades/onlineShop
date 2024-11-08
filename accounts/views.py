@@ -2,8 +2,9 @@ from django.shortcuts import render,redirect
 from django.views.generic import View
 from .forms import RegisterForm
 from .models import Account
+from cart.models import Cart,CartItem
 from django.contrib import messages,auth
-from django.contrib.auth import get_user_model,authenticate,login
+from django.contrib.auth import get_user_model,authenticate,login,logout
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.contrib.sites.shortcuts import get_current_site
@@ -20,7 +21,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
-
+from rest_framework_simplejwt.exceptions import InvalidToken, AuthenticationFailed
 from .serializers import RegisterSerializer, LoginSerializer, ResetPasswordSerializer
 import jwt
 from .tokens import account_activation_token
@@ -200,9 +201,51 @@ class LoginAPIView(TokenObtainPairView):
         email = request.data.get("email")
         password = request.data.get("password")
         user = authenticate(request, email=email, password=password)
+        
         if user:
-            login(request, user)
+            
+            try:
+               
+                cart= Cart.objects.get(cart_session_id=Cart._get_cart_id(request)) 
+                cart_item = CartItem.objects.filter(cart=cart)
+                
+                
+                existing_user_cart_item= CartItem.objects.filter(user=user)     
+                print(existing_user_cart_item)
+                for item in cart_item:
+                    product_variation=[]
 
+                    if existing_user_cart_item.exists():
+                        variation_found=False
+                        product_variation.append(list(item.variation.all()))
+                        print(product_variation)
+                        for item_user in existing_user_cart_item:
+
+                            existing_variations=[]    
+                            existing_variations.append(list(item_user.variation.all()))
+                            print(existing_variations[0])
+                            print(product_variation == existing_variations)
+                            if product_variation == existing_variations:
+                                item_user.quantity +=item.quantity
+                                item_user.save()
+                                variation_found=True
+                                break
+                                
+                                
+                                
+                        if not variation_found:
+                            item.user = user
+                            item.save()
+                    else:
+
+                        item.user = user
+                        item.save()
+
+
+            except:
+                pass
+            
+            login(request, user)  # Create the session    
             refresh = RefreshToken.for_user(user)
             response = Response({
                 'message': 'Login successful!',
@@ -224,12 +267,14 @@ class LoginAPIView(TokenObtainPairView):
             )
             return response
         else:
-            return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response({"error": "Invalid credentials or account not verified"}, status=status.HTTP_401_UNAUTHORIZED)
 
         
 class LogoutAPIView(APIView):
+    
     def post(self, request):
         # Prepare the response
+        logout(request)
         response = Response({"message": "Logout successful"})
         
         # Clear the cookies for access and refresh tokens
@@ -257,8 +302,9 @@ class RegisterAPIView(APIView):
         if serializer.is_valid():
             user = serializer.save()
             # Send verification email
-            #current_site = get_current_site(request).domain
-            #send_activation_email(user, current_site)
+
+            current_site = get_current_site(request).domain
+            send_activation_email(user, current_site)
             return Response({"message": "Registration successful. Please verify your email."}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     

@@ -6,6 +6,7 @@ from .models import Banner
 from .serializers import BannerSerializer
 
 class BannerListView(APIView):
+    
     def get(self, request):
         banners = Banner.objects.all()
         serializer = BannerSerializer(banners, many=True)

@@ -13,10 +13,16 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 from pathlib import Path
 from django.contrib.messages import constants as messages
 from datetime import  timedelta
+import environ
+import os
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
+environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
+env = environ.Env(
+    DEBUG=(bool, False)  # Set default values and casting types
+)
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
@@ -59,6 +65,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'corsheaders.middleware.CorsMiddleware',
+    
 ]
 
 ROOT_URLCONF = 'onlineShop.urls'
@@ -97,6 +104,8 @@ SESSION_COOKIE_HTTPONLY = False  # Prevent JavaScript access to the cookie
 SESSION_COOKIE_SECURE = False  # Set to True in production to ensure it's sent over HTTPS
 SESSION_COOKIE_SAMESITE = 'Lax'  # Adjust as necessary (Lax or None for cross-site)
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+SESSION_COOKIE_AGE = 1209600  # Two weeks
+
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -104,6 +113,7 @@ REST_FRAMEWORK = {
     ),
      'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,  # Adjust this to the desired number of items per page
+    
 }
 
 SIMPLE_JWT = {
@@ -183,8 +193,8 @@ MESSAGES_TAGS = {
    
 }
 
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_HOST_USER = 'elenopoker@gmail.com'
-EMAIL_HOST_PASSWORD = ''
-EMAIL_USE_TLS =  True
+
+
+DEBUG = env("DEBUG")
+SENDGRID_API_KEY = env("SENDGRID_API_KEY")
+DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL')
