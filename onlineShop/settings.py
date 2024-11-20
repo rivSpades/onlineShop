@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'store',
     'cart',
     'cms',
+    "orders",
 
 ]
 
@@ -61,11 +62,10 @@ MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',  # Authentication middleware must be before CorsMiddleware
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
-    
+    'corsheaders.middleware.CorsMiddleware',  # Make sure CORS middleware comes after AuthenticationMiddleware
 ]
 
 ROOT_URLCONF = 'onlineShop.urls'

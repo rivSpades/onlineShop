@@ -21,7 +21,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
-from rest_framework_simplejwt.exceptions import InvalidToken, AuthenticationFailed
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from .serializers import RegisterSerializer, LoginSerializer, ResetPasswordSerializer
 import jwt
 from .tokens import account_activation_token
@@ -358,9 +358,29 @@ class ResetPasswordAPIView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         return Response({"error": "Invalid or expired token."}, status=status.HTTP_400_BAD_REQUEST)
 
+
+
 class ValidateTokenAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        # If the user is authenticated, return a success message
-        return Response({"message": "Token is valid"}, status=status.HTTP_200_OK)
+        try:
+            # If the user is authenticated, return a success message
+            return Response({"message": "Token is valid"}, status=status.HTTP_200_OK)
+        except :
+            logout(request)
+            # Clear cookies if the token is invalid or expired
+            response = Response({"message": "Token is invalid or expired"}, status=status.HTTP_401_UNAUTHORIZED)
+            response.delete_cookie('access_token')
+            response.delete_cookie('refresh_token')
+
+            # Optionally, blacklist the refresh token if it's provided and valid
+            refresh_token = request.data.get("refresh")
+            if refresh_token:
+                try:
+                    token = RefreshToken(refresh_token)
+                    token.blacklist()  # Blacklist the refresh token
+                except (InvalidToken, TokenError):
+                    pass  # Handle any issues with the refresh token here if needed
+
+            return response

@@ -10,7 +10,7 @@ from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticatedOrReadOnly,AllowAny,IsAuthenticated  # Allows unauthenticated access for some parts
 from rest_framework.authentication import SessionAuthentication, BasicAuthentication
-
+from rest_framework_simplejwt.authentication import JWTAuthentication  # assuming JWT is imported
 class AddCartView(View):
          
 
@@ -123,14 +123,15 @@ class CartView(View):
 
 
 class ApiCartView(APIView):
-    authentication_classes = [SessionAuthentication]
+    authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticatedOrReadOnly]
   
     def get(self, request):
         token = request.META.get('HTTP_AUTHORIZATION', " ").split(' ')[1]
         print(token)
+        
         try:
-            print(request.user)
+    
             if request.user.is_authenticated:
                 cart_items = CartItem.objects.filter(user=request.user, is_active=True)
                 

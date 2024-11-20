@@ -57,7 +57,7 @@ def send_password_reset_email(user, request):
 
     # Send the email using SendGrid API
     try:
-        sg = SendGridAPIClient(settings.SENDGRID_API_KEY)
+        sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY'))
         response = sg.send(email)
         print(response.status_code)  # Useful for debugging
     except Exception as e:
