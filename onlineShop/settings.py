@@ -99,18 +99,20 @@ CORS_ALLOWED_ORIGINS = [
 if env("ENV") == "prod":  # Assuming you have ENV set to "prod" for production
     CSRF_COOKIE_SECURE = True
     SESSION_COOKIE_SECURE = True
-    SESSION_COOKIE_DOMAIN = '.onlineshopcosmetics.app'  # Replace with your custom domain
-    CSRF_COOKIE_DOMAIN = '.onlineshopcosmetics.app'     # Same as above
-    SESSION_COOKIE_SAMESITE = 'Lax'  # Adjust if cross-site requests are necessary
+    SESSION_COOKIE_DOMAIN = 'onlineshopcosmetics.netlify.app'  # Replace with your custom domain
+    CSRF_COOKIE_DOMAIN = 'onlineshopcosmetics.netlify.app'     # Same as above
+    CSRF_COOKIE_SAMESITE = 'None' 
+    SESSION_COOKIE_SAMESITE = 'None'
 else:
     CSRF_COOKIE_SECURE = False      # Use False for local development
     CSRF_COOKIE_SAMESITE = 'Lax'   # Same as above
     SESSION_COOKIE_SECURE = False  # Set to True in production to ensure it's sent over HTTPS
+    SESSION_COOKIE_SAMESITE = 'Lax'  # Adjust as necessary (Lax or None for cross-site)
     
-CSRF_COOKIE_SAMESITE = 'Lax'  # Adjust if cross-site requests are necessary
+ # Adjust if cross-site requests are necessary
 SESSION_COOKIE_NAME = 'sessionid'  # Default session cookie name
 SESSION_COOKIE_HTTPONLY = False  # Prevent JavaScript access to the cookie
-SESSION_COOKIE_SAMESITE = 'Lax'  # Adjust as necessary (Lax or None for cross-site)
+
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 SESSION_COOKIE_AGE = 1209600  # Two weeks
 
