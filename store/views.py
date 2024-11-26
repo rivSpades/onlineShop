@@ -89,7 +89,11 @@ class ProductsAPIView(ListAPIView):
                 Q(description__icontains=keyword) |
                 Q(category__name__icontains=keyword)
             )
-
+        ordering = self.request.query_params.get('ordering', None)
+       
+        if ordering:
+             queryset = queryset.order_by(ordering)
+             return queryset[:10]
         return queryset
 
     
