@@ -102,7 +102,8 @@ CSRF_COOKIE_SECURE = False      # Use False for local development
 CSRF_COOKIE_SAMESITE = 'Lax'   # Same as above
 SESSION_COOKIE_SECURE = False  # Set to True in production to ensure it's sent over HTTPS
 SESSION_COOKIE_SAMESITE = 'Lax'  # Adjust as necessary (Lax or None for cross-site)
-
+CSRF_COOKIE_DOMAIN = os.environ.get('FRONTEND_DOMAIN')
+SESSION_COOKIE_DOMAIN = os.environ.get('FRONTEND_DOMAIN')
  # Adjust if cross-site requests are necessary
 SESSION_COOKIE_NAME = 'sessionid'  # Default session cookie name
 SESSION_COOKIE_HTTPONLY = False  # Prevent JavaScript access to the cookie
