@@ -73,7 +73,7 @@ ROOT_URLCONF = 'onlineShop.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': ['templates'],
+        'DIRS': [BASE_DIR / 'templates'], 
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -97,17 +97,11 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 # Cookie settings
-if os.environ.get('ENV')== "prod":  # Assuming you have ENV set to "prod" for production
-    CSRF_COOKIE_SECURE = True
-    SESSION_COOKIE_SECURE = True
 
-    CSRF_COOKIE_SAMESITE = 'None' 
-    SESSION_COOKIE_SAMESITE = 'None'
-else:
-    CSRF_COOKIE_SECURE = False      # Use False for local development
-    CSRF_COOKIE_SAMESITE = 'Lax'   # Same as above
-    SESSION_COOKIE_SECURE = False  # Set to True in production to ensure it's sent over HTTPS
-    SESSION_COOKIE_SAMESITE = 'Lax'  # Adjust as necessary (Lax or None for cross-site)
+CSRF_COOKIE_SECURE = False      # Use False for local development
+CSRF_COOKIE_SAMESITE = 'Lax'   # Same as above
+SESSION_COOKIE_SECURE = False  # Set to True in production to ensure it's sent over HTTPS
+SESSION_COOKIE_SAMESITE = 'Lax'  # Adjust as necessary (Lax or None for cross-site)
 
  # Adjust if cross-site requests are necessary
 SESSION_COOKIE_NAME = 'sessionid'  # Default session cookie name
@@ -132,6 +126,7 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
     'BLACKLIST_AFTER_ROTATION': True,
     'TOKEN_BLACKLIST': 'rest_framework_simplejwt.token_blacklist.models.BlacklistedToken',
+    'COOKIE_DOMAIN': os.environ.get('FRONTEND_DOMAIN')
 }
 
 WSGI_APPLICATION = 'onlineShop.wsgi.application'
@@ -205,6 +200,4 @@ MESSAGES_TAGS = {
 
 
 
-DEBUG = env("DEBUG")
-SENDGRID_API_KEY = env("SENDGRID_API_KEY")
-DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL')
+

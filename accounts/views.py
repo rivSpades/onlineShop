@@ -14,7 +14,7 @@ from django.utils.encoding import force_bytes
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import EmailMessage
 from django.conf import settings
-
+import os
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -256,14 +256,16 @@ class LoginAPIView(TokenObtainPairView):
                 value=str(refresh.access_token),
                 httponly=False,
                 secure=False,  # Set to True in production
-                samesite='Lax'
+                samesite='Lax',
+                domain = os.environ.get('FRONTEND_DOMAIN')
             )
             response.set_cookie(
                 key='refresh_token',
                 value=str(refresh),
                 httponly=False,
                 secure=False,  # Set to True in production
-                samesite='Lax'
+                samesite='Lax',
+                domain = os.environ.get('FRONTEND_DOMAIN')
             )
             return response
         else:
@@ -278,8 +280,8 @@ class LogoutAPIView(APIView):
         response = Response({"message": "Logout successful"})
         
         # Clear the cookies for access and refresh tokens
-        response.delete_cookie('access_token')
-        response.delete_cookie('refresh_token')
+        response.delete_cookie('access_token' , domain = os.environ.get('FRONTEND_DOMAIN'))
+        response.delete_cookie('refresh_token' , domain = os.environ.get('FRONTEND_DOMAIN'))
         
         # Attempt to blacklist the refresh token if provided
         try:
@@ -371,8 +373,8 @@ class ValidateTokenAPIView(APIView):
             logout(request)
             # Clear cookies if the token is invalid or expired
             response = Response({"message": "Token is invalid or expired"}, status=status.HTTP_401_UNAUTHORIZED)
-            response.delete_cookie('access_token')
-            response.delete_cookie('refresh_token')
+            response.delete_cookie('access_token' , domain = os.environ.get('FRONTEND_DOMAIN'))
+            response.delete_cookie('refresh_token' , domain = os.environ.get('FRONTEND_DOMAIN'))
 
             # Optionally, blacklist the refresh token if it's provided and valid
             refresh_token = request.data.get("refresh")
