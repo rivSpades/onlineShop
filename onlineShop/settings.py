@@ -92,6 +92,7 @@ CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "https://onlineshopcosmetics.netlify.app",
+    "http://jstories.pt",
     # add any other domains you want to allow
 ]
 
@@ -99,8 +100,7 @@ CORS_ALLOWED_ORIGINS = [
 if os.environ.get('ENV')== "prod":  # Assuming you have ENV set to "prod" for production
     CSRF_COOKIE_SECURE = True
     SESSION_COOKIE_SECURE = True
-    SESSION_COOKIE_DOMAIN = 'onlineshopcosmetics.netlify.app'  # Replace with your custom domain
-    CSRF_COOKIE_DOMAIN = 'onlineshopcosmetics.netlify.app'     # Same as above
+
     CSRF_COOKIE_SAMESITE = 'None' 
     SESSION_COOKIE_SAMESITE = 'None'
 else:
