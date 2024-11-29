@@ -91,9 +91,7 @@ CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
-    "https://onlineshopcosmetics.netlify.app",
-    "https://jstories.pt",
-    "http://jstories.pt",
+    "https://"+os.environ.get('FRONTEND_DOMAIN'),
     # add any other domains you want to allow
 ]
 

@@ -305,7 +305,7 @@ class RegisterAPIView(APIView):
             user = serializer.save()
             # Send verification email
 
-            current_site = get_current_site(request).domain
+            current_site = os.environ.get('FRONTEND_DOMAIN')
             send_activation_email(user, current_site)
             return Response({"message": "Registration successful. Please verify your email."}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
