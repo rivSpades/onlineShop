@@ -4,6 +4,7 @@ from django.template.loader import render_to_string
 from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
 from django.contrib.auth.tokens import default_token_generator
+from .tokens import account_activation_token
 from django.conf import settings
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Email, Content
@@ -11,12 +12,16 @@ import os
 
 def send_activation_email(user, domain):
     # Prepare email content
+    token= account_activation_token.make_token(user)
+    uid= urlsafe_base64_encode(force_bytes(user.pk))
+    print(uid)
+    print(token)
     mail_subject = 'Activate your account'
     message = render_to_string('accounts/account_verification_email.html', {
         'user': user,
         'domain': domain,
-        'uid': urlsafe_base64_encode(force_bytes(user.pk)),
-        'token': default_token_generator.make_token(user),
+        'uid': uid,
+        'token': token,
     })
     
     # Create the email

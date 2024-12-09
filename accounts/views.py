@@ -303,9 +303,12 @@ class RegisterAPIView(APIView):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
-            # Send verification email
 
-            current_site = os.environ.get('FRONTEND_DOMAIN')
+            # Send verification email
+            if os.environ.get('FRONTEND_DOMAIN') =="localhost":
+                current_site ="localhost:3000"
+            else:                
+                current_site = os.environ.get('FRONTEND_DOMAIN')
             send_activation_email(user, current_site)
             return Response({"message": "Registration successful. Please verify your email."}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -315,11 +318,17 @@ class ActivateAccountAPIView(APIView):
 
     def get(self, request, uidb64, token):
         try:
+
             uid = urlsafe_base64_decode(uidb64).decode()
-            user = get_user_model().objects.get(pk=uid)
+            print(uid)
+            print(uidb64)
+            print(token)
+            user = Account._default_manager.get(pk=uid)
+            #user = get_user_model().objects.get(pk=uid)
+            print(user)
         except (TypeError, ValueError, OverflowError, get_user_model().DoesNotExist):
             user = None
-
+        print(account_activation_token.check_token(user, token))
         if user is not None and account_activation_token.check_token(user, token):
             user.is_active = True
             user.save()
