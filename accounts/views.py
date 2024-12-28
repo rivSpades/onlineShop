@@ -198,7 +198,7 @@ class LoginAPIView(TokenObtainPairView):
     serializer_class = LoginSerializer
 
     def post(self, request, *args, **kwargs):
-        email = request.data.get("email")
+        email = request.data.get("email", "").lower()  # Normalize email to lowercase
         password = request.data.get("password")
         user = authenticate(request, email=email, password=password)
         

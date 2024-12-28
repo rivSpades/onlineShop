@@ -131,16 +131,19 @@ class ApiCartView(APIView):
         print(token)
         
         try:
-    
             if request.user.is_authenticated:
                 cart_items = CartItem.objects.filter(user=request.user, is_active=True)
-                
             else:
-                cart = Cart.objects.get(cart_session_id=Cart._get_cart_id(request))            
+                cart = Cart.objects.get(cart_session_id=Cart._get_cart_id(request))
                 cart_items = CartItem.objects.filter(cart=cart, is_active=True)
 
-            # Calculate total, tax, and grand total
-            total = sum(item.product.price * item.quantity for item in cart_items)
+            # Calculate total, tax, and grand total for variations
+            total = 0
+            for item in cart_items:
+                # Check for variations in the item
+                variation_prices = sum([variation.product.price for variation in item.variation.all()])
+                total += variation_prices * item.quantity
+
             tax = 0.02 * total
             grand_total = total + tax
 
@@ -159,91 +162,74 @@ class ApiCartView(APIView):
 
         except Cart.DoesNotExist:
             return Response({"error": "Cart not found"}, status=status.HTTP_404_NOT_FOUND)
+
         
 
 class ApiAddCartView(APIView):
-   
     permission_classes = [AllowAny]
+
     def post(self, request, product_id):
-        # Fetch the product by ID
         product = get_object_or_404(Product, id=product_id)
         product_variations = []
 
-        # Parse the variations and quantity from request data
         variations_data = request.data.get('variations', {})
-        quantity = request.data.get('quantity', 1)  # Default to 1 if not provided
+        quantity = int(request.data.get('quantity', 1))
 
+        # Validate and collect variations
         for key, value in variations_data.items():
             try:
-                # Find the specific variation for the product
-                variation = Variation.objects.get(name__iexact=key, value__iexact=value, product=product)
+                variation = Variation.objects.get(
+                    variation_type__name__iexact=key,
+                    value__iexact=value,
+                    product=product
+                )
                 product_variations.append(variation)
             except Variation.DoesNotExist:
-                continue
+                return Response({"error": f"Variation '{key}: {value}' not found."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Get or create a cart for the current session
-        print(request.user)
+        # Get or create a cart
         if request.user.is_authenticated:
             cart_item_qs = CartItem.objects.filter(user=request.user, product=product)
-            
-
-
-        else:    
+        else:
             cart, created = Cart.objects.get_or_create(cart_session_id=Cart._get_cart_id(request))
+            cart_item_qs = CartItem.objects.filter(cart=cart, product=product)
 
-        # Check if this product with these specific variations already exists in the cart
-            cart_item_qs = CartItem.objects.filter(product=product, cart=cart)
-        variation_found = False
+        # Check for existing cart item with the same variations
+        for item in cart_item_qs:
+            if set(product_variations) == set(item.variation.all()):
+                item.quantity += quantity
+                item.save()
+                return Response({"message": "Product quantity updated in cart."}, status=status.HTTP_200_OK)
 
-        if cart_item_qs.exists():
-            for item in cart_item_qs:
-                # Get variations associated with this cart item
-                existing_variations = list(item.variation.all())
+        # Create new cart item if no match found
+        cart_item = CartItem(
+            product=product,
+            quantity=quantity,
+            is_active=True,
+            user=request.user if request.user.is_authenticated else None,
+            cart=cart if not request.user.is_authenticated else None
+        )
+        cart_item.save()
+        if product_variations:
+            cart_item.variation.set(product_variations)
 
-                # Check if the existing cart item has the same set of variations
-                if set(product_variations) == set(existing_variations):
-                    # If so, update the quantity
-                    item.quantity += quantity  # Update by specified quantity
-                    item.save()
-                    variation_found = True
-                    break
+        return Response({"message": "Product added to cart."}, status=status.HTTP_201_CREATED)
 
-        # If no cart item with the same variations exists, create a new cart item
-        if not variation_found:
-            if request.user.is_authenticated:
-                new_cart_item = CartItem.objects.create(
-                                product=product,
-                               
-                                quantity=quantity,  # Set quantity based on request
-                                is_active=True,
-                                user=request.user
-                            )       
-            else:                 
-                new_cart_item = CartItem.objects.create(
-                    product=product,
-                    cart=cart,
-                    quantity=quantity,  # Set quantity based on request
-                    is_active=True
-                )
-            if product_variations:
-                new_cart_item.variation.set(product_variations)
-            new_cart_item.save()
 
-        return Response({"message": "Product added to cart successfully"}, status=status.HTTP_201_CREATED)
 
 
 class ApiRemoveCartView(APIView):
     permission_classes = [AllowAny]
+
     def delete(self, request, product_id, cart_item_id):
         # Determine if the item should be removed completely or just decreased in quantity
         remove_item = request.GET.get('remove_item', 'false') == 'true'
         product = get_object_or_404(Product, id=product_id)
+
         if request.user.is_authenticated:
-            cart_item = CartItem.objects.get(user=request.user, product=product,id=cart_item_id)     
-        else:       
-        # Retrieve the cart using the session ID
+            cart_item = CartItem.objects.get(user=request.user, product=product, id=cart_item_id)
+        else:
             cart = Cart.objects.get(cart_session_id=Cart._get_cart_id(request))
-            
             cart_item = get_object_or_404(CartItem, product=product, cart=cart, id=cart_item_id)
 
         # Logic to remove the item from the cart
@@ -256,4 +242,5 @@ class ApiRemoveCartView(APIView):
             return Response({"message": "Item removed from cart"}, status=status.HTTP_200_OK)
 
         return Response({"error": "Invalid operation"}, status=status.HTTP_400_BAD_REQUEST)
+
     

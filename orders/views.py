@@ -19,21 +19,16 @@ class ApiPlaceOrder(APIView):
         # Extract cart items for the authenticated user
         cart_items = CartItem.objects.filter(user=request.user)
         paypal_order_data = request.data.get("order")
-        print(paypal_order_data)
         if not paypal_order_data:
             return Response({"error": "No payment details"}, status=status.HTTP_400_BAD_REQUEST)
         
         if not cart_items.exists():
             return Response({"error": "Your cart is empty."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Extract order and payment information from request data
-    
-
-
         # Calculate order total and tax
         order_total = sum(item.product.price * item.quantity for item in cart_items)
         tax = order_total * 0.1  # Assume a 10% tax rate
-        grand_total=order_total+tax
+        grand_total = order_total + tax
 
         payment = Payment.objects.create(
             user=request.user,
@@ -41,8 +36,8 @@ class ApiPlaceOrder(APIView):
             payment_method="PayPal",
             amount_paid=grand_total,
             status=paypal_order_data.get("status"),
-            
         )
+
         # Step 2: Create Order record
         order = Order.objects.create(
             user=request.user,
@@ -52,7 +47,7 @@ class ApiPlaceOrder(APIView):
             phone=request.data.get("phone"),
             email=request.data.get("email"),
             address_line_1=request.data.get("address_line_1"),
-            address_line_2=request.data.get("address_line_2",""),
+            address_line_2=request.data.get("address_line_2", ""),
             country=request.data.get("country"),
             state=request.data.get("state"),
             city=request.data.get("city"),
@@ -60,41 +55,40 @@ class ApiPlaceOrder(APIView):
             order_total=grand_total,
             tax=tax,
             ip=request.META.get("REMOTE_ADDR"),
-            
         )
+        
+        order.order_number = Order._generate_order_number(order)
 
-
-       
-        order.order_number=  Order._generate_order_number(order)
-
-        if paypal_order_data.get("status") =="COMPLETED":
-            order.is_ordered=True
+        if paypal_order_data.get("status") == "COMPLETED":
+            order.is_ordered = True
 
         order.save()
 
-
+        # Step 3: Create OrderProduct records and handle stock management for variations
         for item in cart_items:
             order_product = OrderProduct.objects.create(
                 order=order,
-                payment = payment,
-                user = request.user,
-                product = item.product,
-                quantity = item.quantity,
-                product_price = item.product.price,
+                payment=payment,
+                user=request.user,
+                product=item.product,
+                quantity=item.quantity,
+                product_price=item.product.price,
                 is_ordered=True
-
             )
 
-            product_variation = item.variation.all()
-            order_product.variation.set(product_variation)
+            # Get variations associated with the cart item
+            product_variations = item.variation.all()
+            order_product.variation.set(product_variations)
 
-            item.product.stock -= item.quantity
-            item.product.save()
-      
-        order_product.save()
+            # Decrement stock for the variations
+            for variation in product_variations:
+                variation.stock -= item.quantity
+                variation.save()
 
-        send_order_email(request.user,order)
+        # Send order email
+        send_order_email(request.user, order)
 
+        # Clear cart items after order placement
         cart_items.delete()
 
         order_serializer = OrderSerializer(order)
@@ -106,6 +100,7 @@ class ApiPlaceOrder(APIView):
             },
             status=status.HTTP_201_CREATED
         )
+
 
 class ApiOrderDetail(APIView):
   

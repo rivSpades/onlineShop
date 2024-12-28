@@ -2,7 +2,7 @@ from django.shortcuts import render,get_object_or_404
 from django.core.paginator import Paginator
 from django.views.generic import View
 from django.db.models import Q
-from .models import Product
+from .models import Product,Brand,Gender
 from category.models import Category,MainCategory
 from cart.models import CartItem,Cart
 from .serializers import ProductSerializer
@@ -67,7 +67,7 @@ class ProductsAPIView(ListAPIView):
 
     def get_queryset(self):
         # Base queryset to only include available products
-        queryset = Product.objects.filter(is_avaliable=True)
+        queryset = Product.objects.prefetch_related('variations').filter(is_avaliable=True)
 
         # Filter by category slug if provided
         category_slug = self.request.query_params.get('category')
@@ -81,6 +81,18 @@ class ProductsAPIView(ListAPIView):
             main_category = get_object_or_404(MainCategory, slug=main_category_slug)
             queryset = queryset.filter(category__main_category=main_category)
 
+        # Filter by brand slug if provided
+        brand_slug = self.request.query_params.get('brand')
+        if brand_slug:
+            brand = get_object_or_404(Brand, slug=brand_slug)
+            queryset = queryset.filter(brand=brand)
+
+        # Filter by gender slug if provided
+        gender_slug = self.request.query_params.get('gender')
+        if gender_slug:
+            gender = get_object_or_404(Gender, slug=gender_slug)
+            queryset = queryset.filter(gender=gender)
+
         # Filter by keyword if provided
         keyword = self.request.query_params.get('keyword')
         if keyword:
@@ -89,30 +101,35 @@ class ProductsAPIView(ListAPIView):
                 Q(description__icontains=keyword) |
                 Q(category__name__icontains=keyword)
             )
-        ordering = self.request.query_params.get('ordering', None)
-       
-        if ordering:
-             queryset = queryset.order_by(ordering)
-             return queryset[:10]
-        return queryset
 
-    
+        # Ordering if specified
+        ordering = self.request.query_params.get('ordering', None)
+        if ordering:
+            queryset = queryset.order_by(ordering)
+
+        # Limit the number of results returned (e.g., 10 by default)
+        limit = int(self.request.query_params.get('limit', 10))
+        return queryset[:limit]
+
+
 class ProductDetailAPIView(RetrieveAPIView):
-    queryset = Product.objects.filter(is_avaliable=True)
+    queryset = Product.objects.prefetch_related('variations').filter(is_avaliable=True)
     serializer_class = ProductSerializer
     lookup_field = 'slug'
-    lookup_url_kwarg = 'product_slug'    
+    lookup_url_kwarg = 'product_slug'
+
 
 class SearchAPIView(ListAPIView):
     serializer_class = ProductSerializer
 
     def get_queryset(self):
-
-        
-        # Search by keyword in name or description
+        # Search by keyword in name, description, or category
         keyword = self.request.query_params.get('keyword')
-        print(keyword)
         if keyword:
-            queryset = Product.objects.filter(Q(name__icontains=keyword) | Q(description__icontains=keyword) | Q(category__name__icontains=keyword),is_avaliable=True)
-
-        return queryset    
+            return Product.objects.filter(
+                Q(name__icontains=keyword) |
+                Q(description__icontains=keyword) |
+                Q(category__name__icontains=keyword),
+                is_avaliable=True
+            )
+        return Product.objects.none()  # Return an empty queryset if no keyword is provided

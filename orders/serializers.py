@@ -1,14 +1,16 @@
 from rest_framework import serializers
 from .models import Order, OrderProduct,Payment
-from store.serializers import ProductImageSerializer
+from store.serializers import ProductImageSerializer,VariationSerializer
 
 class OrderProductSerializer(serializers.ModelSerializer):
     images = ProductImageSerializer(source='product.images', many=True)  # Include product images
     product_id = serializers.IntegerField(source='product.id')
     product_name = serializers.CharField(source='product.name')
+    variations = VariationSerializer(source='variation', many=True)  # Include variations
+
     class Meta:
         model = OrderProduct
-        fields = ['product_id', 'product_name', 'variation', 'quantity', 'product_price','images']
+        fields = ['product_id', 'product_name', 'variations', 'quantity', 'product_price', 'images']
 
 
 
