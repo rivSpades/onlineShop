@@ -21,7 +21,14 @@ class CartItemSerializer(serializers.ModelSerializer):
 
     def get_images(self, obj):
         """Fetch images associated with the product or its variations."""
+        # Fetch product-level images
         product_images = obj.product.product_images.all()
+
+        # Fetch images linked to variations
         variation_images = ProductImage.objects.filter(variation__in=obj.variation.all())
-        images = product_images | variation_images  # Combine product and variation images
+
+        # Combine product and variation images (avoiding duplicates with `.distinct()`)
+        images = (product_images | variation_images).distinct()
+
+        # Serialize the images
         return ProductImageSerializer(images, many=True, context=self.context).data

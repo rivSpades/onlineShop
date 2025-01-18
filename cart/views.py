@@ -147,14 +147,14 @@ class ApiCartView(APIView):
             tax = 0.02 * total
             grand_total = total + tax
 
-            # Serialize the cart items
-            cart_items_data = CartItemSerializer(cart_items, many=True).data
+            # Serialize the cart items with context
+            cart_items_data = CartItemSerializer(cart_items, many=True, context={'request': request}).data
 
             # Construct the response data
             cart_data = {
-                'total': total,
-                'tax': tax,
-                'grand_total': grand_total,
+                'total':round(total, 2),
+                'tax': round(tax, 2),
+                'grand_total':round(grand_total, 2),
                 'cart_items': cart_items_data,
             }
 
@@ -174,14 +174,14 @@ class ApiAddCartView(APIView):
 
         variations_data = request.data.get('variations', {})
         quantity = int(request.data.get('quantity', 1))
-
+        print(variations_data)
         # Validate and collect variations
         for key, value in variations_data.items():
+            print(key)
+            print(value)
             try:
                 variation = Variation.objects.get(
-                    variation_type__name__iexact=key,
-                    value__iexact=value,
-                    product=product
+                   pk=value
                 )
                 product_variations.append(variation)
             except Variation.DoesNotExist:
