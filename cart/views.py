@@ -174,15 +174,16 @@ class ApiAddCartView(APIView):
 
         variations_data = request.data.get('variations', {})
         quantity = int(request.data.get('quantity', 1))
-        print(variations_data)
+
         # Validate and collect variations
         for key, value in variations_data.items():
-            print(key)
-            print(value)
             try:
-                variation = Variation.objects.get(
-                   pk=value
-                )
+                variation = Variation.objects.get(pk=value)
+                
+                # Check variation stock
+                if variation.quantity < 1:
+                    return Response({"error": f"Variation '{key}: {value}' is out of stock."}, status=status.HTTP_400_BAD_REQUEST)
+
                 product_variations.append(variation)
             except Variation.DoesNotExist:
                 return Response({"error": f"Variation '{key}: {value}' not found."}, status=status.HTTP_400_BAD_REQUEST)
@@ -197,9 +198,17 @@ class ApiAddCartView(APIView):
         # Check for existing cart item with the same variations
         for item in cart_item_qs:
             if set(product_variations) == set(item.variation.all()):
+                # Ensure stock is sufficient for the requested quantity
+                if any(variation.quantity < item.quantity + quantity for variation in product_variations):
+                    return Response({"error": "Not enough stock for one or more variations."}, status=status.HTTP_400_BAD_REQUEST)
+
                 item.quantity += quantity
                 item.save()
                 return Response({"message": "Product quantity updated in cart."}, status=status.HTTP_200_OK)
+
+        # Ensure stock is sufficient for the requested quantity for a new cart item
+        if any(variation.quantity < quantity for variation in product_variations):
+            return Response({"error": "Not enough stock for one or more variations."}, status=status.HTTP_400_BAD_REQUEST)
 
         # Create new cart item if no match found
         cart_item = CartItem(
@@ -214,6 +223,7 @@ class ApiAddCartView(APIView):
             cart_item.variation.set(product_variations)
 
         return Response({"message": "Product added to cart."}, status=status.HTTP_201_CREATED)
+
 
 
 
