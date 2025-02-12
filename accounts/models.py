@@ -40,6 +40,7 @@ class MyAccountManager(BaseUserManager):
 
 # Custom user model
 class Account(AbstractBaseUser):
+    reset_token_used = models.BooleanField(default=False)
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
     username = models.CharField(max_length=50, unique=True)  # Updated field name to match everywhere

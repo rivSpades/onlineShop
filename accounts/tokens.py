@@ -1,5 +1,6 @@
 # tokens.py
-
+from django.utils import timezone
+import datetime
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 
 class AccountActivationTokenGenerator(PasswordResetTokenGenerator):

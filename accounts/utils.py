@@ -42,19 +42,21 @@ def send_activation_email(user, domain):
         print(f"Error sending email: {e}")
 
 
-def send_password_reset_email(user, request):
+def send_password_reset_email(user, domain):
     mail_subject = 'Password Reset Request'
-    domain = request.get_host()
+
+    token= account_activation_token.make_token(user)
+    uid= urlsafe_base64_encode(force_bytes(user.pk))
     message = render_to_string('accounts/reset_password_email.html', {
         'user': user,
         'domain': domain,
-        'uid': urlsafe_base64_encode(force_bytes(user.pk)),
-        'token': default_token_generator.make_token(user),
+        'uid': uid,
+        'token': token,
     })
     
     # Create the email
     email = Mail(
-        from_email=Email(settings.DEFAULT_FROM_EMAIL),
+        from_email=os.environ.get('DEFAULT_FROM_EMAIL'),  # Replace with a verified SendGrid sender email
         to_emails=user.email,
         subject=mail_subject,
         html_content=message

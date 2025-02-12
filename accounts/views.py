@@ -25,7 +25,7 @@ from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from .serializers import RegisterSerializer, LoginSerializer, ResetPasswordSerializer
 import jwt
 from .tokens import account_activation_token
-from .utils import send_activation_email
+from .utils import send_activation_email,send_password_reset_email
 
 # Create your views here.
 
@@ -342,11 +342,20 @@ class ForgotPasswordAPIView(APIView):
 
     def post(self, request):
         email = request.data.get('email')
+
         try:
-            user = get_user_model().objects.get(email=email)
-            send_password_reset_email(user, request)
+            user = Account._default_manager.get(email=email)
+            if os.environ.get('FRONTEND_DOMAIN') =="localhost":
+                current_site ="localhost:3000"
+            else:                
+                current_site = os.environ.get('FRONTEND_DOMAIN')
+            user.reset_token_used = False  # Mark the token as used
+            user.save()
+            send_password_reset_email(user, current_site)
+
             return Response({"message": "Password reset email sent."}, status=status.HTTP_200_OK)
-        except get_user_model().DoesNotExist:
+
+        except Account.DoesNotExist:  # Corrected exception handling
             return Response({"error": "No account found with this email."}, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -354,19 +363,29 @@ class ResetPasswordAPIView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request, uidb64, token):
+        # Get data from request body
+        password = request.data.get('password')
+
+        if not password:
+            return Response({"error": "Password is required."}, status=status.HTTP_400_BAD_REQUEST)
+
         try:
+            # Decode UID to user ID
             uid = urlsafe_base64_decode(uidb64).decode()
-            user = get_user_model().objects.get(pk=uid)
+            user = Account._default_manager.get(pk=uid)
         except (TypeError, ValueError, OverflowError, get_user_model().DoesNotExist):
             user = None
 
-        if user is not None and default_token_generator.check_token(user, token):
-            serializer = ResetPasswordSerializer(data=request.data)
-            if serializer.is_valid():
-                user.set_password(serializer.validated_data['password'])
-                user.save()
-                return Response({"message": "Password reset successful."}, status=status.HTTP_200_OK)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        if user is not None and account_activation_token.check_token(user, token):
+            # Process the password reset
+            if user.reset_token_used:
+                return Response({"error": "Token has already been used."}, status=status.HTTP_400_BAD_REQUEST)
+
+            user.set_password(password)
+            user.reset_token_used = True  # Mark the token as used
+            user.save()
+            return Response({"message": "Password reset successful."}, status=status.HTTP_200_OK)
+        
         return Response({"error": "Invalid or expired token."}, status=status.HTTP_400_BAD_REQUEST)
 
 
